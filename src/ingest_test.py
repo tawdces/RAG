@@ -1,3 +1,8 @@
+# อ่านก่อนนนนนนนนนนนนนนนนนนนนนนนน!!!!!!!!!!!!!!!!!!!!!!!!
+# เตือนสติตัวเอง ห้ามรัน ingest_test.py มั่วๆโดยไม่อ่าน code ก่อน
+# เพราะมี clear_collection() ถ้ารันแล้วข้อมูลจะหายหมด
+# กรุณาใส่ # ปิดไว้ดีๆก่อนรัน
+
 import os
 import time
 from load_pdf import load_pdf
@@ -17,7 +22,7 @@ def main():
 
     # print("Total chunks:", len(chunks))
 
-    # clear_collection() 
+    # clear_collection() # # มี clear_collection() ตรงนี้นะจ้ะ
 
     # success = 0
 
@@ -63,7 +68,7 @@ def main():
 
     #     print("Total chunks: ", len(chunks))
 
-    clear_collection() 
+    clear_collection() # มี clear_collection ตรงนี้นะจ้ะ
     # Problem
     # file ใหม่ที่อัพมาเป็น file เดิมที่มีอยู่เเล้ว
     # หาก clear_collection จะทำให้ข้อมูลเก่าหายไปดวย
