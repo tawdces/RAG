@@ -1,4 +1,8 @@
 *.pdf
 *.PDF
-__pycache__/
+
 .env
+
+__pycache__/
+
+PROBLEM.txt

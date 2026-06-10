@@ -1,3 +1,0 @@
-This folder is used for storing PDF files.
-
-Please upload all PDF documents here before running the ingestion pipeline.
