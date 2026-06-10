@@ -26,6 +26,7 @@ def search_similar(vector, top_k=3):
         {
             "$project": {
                 "_id": 0,
+                "file_name": 1,
                 "text": 1,
                 "page": 1,
                 "score": {"$meta": "vectorSearchScore"}

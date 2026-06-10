@@ -16,6 +16,9 @@ def main():
 
         for i, r in enumerate(results):
             print(f"\n--- Chunk {i+1} (score: {r['score']:.4f}) ---")
+            print(f"File : {r['file_name']}")
+            print(f"Page : {r['page']}")
+            print()
             print(r["text"])
 
 if __name__ == "__main__":
