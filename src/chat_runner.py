@@ -1,9 +1,9 @@
-from embedding import get_embedding
-from database import search_similar
+from embedding_service import get_embedding
+from vector_db import search_similar
 
 def main():
     while True:
-        question = input("\n--- Question: ")
+        question = input("\nQuestion: ")
 
         if question.lower() == "exit":
             break

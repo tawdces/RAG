@@ -1,4 +1,4 @@
-from config import CHUNK_SIZE, CHUNK_OVERLAP
+from config import CHUNK_SIZE
 
 def chunk_text(text: str):
     lines = text.split("\n")
