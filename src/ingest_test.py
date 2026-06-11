@@ -10,9 +10,13 @@ from chunking import create_chunks
 from embedding import get_embedding
 from database import insert_documents, clear_collection
 from config import PDF_PATH
+import hashlib
+
+def hash_text(t):
+    return hashlib.md5(t.encode()).hexdigest()
 
 def main():
-    # TARGET_FILE = "....PDF"
+    # TARGET_FILE = "tracker.PDF"
     # pdf_path = os.path.join(PDF_PATH, TARGET_FILE)
 
     # print(f"\nProcessing: {TARGET_FILE}")
@@ -22,31 +26,43 @@ def main():
 
     # print("Total chunks:", len(chunks))
 
-    # clear_collection() # # มี clear_collection() ตรงนี้นะจ้ะ
+    # clear_collection() # มี clear_collection() ตรงนี้นะจ้ะ
 
     # success = 0
 
+    # seen = set()
+
     # for i, c in enumerate(chunks):
+    #     text = c["text"].strip()
+    #     if not text:
+    #         continue
+
+    #     if hash_text(text) in seen:
+    #         print(f"Skip duplicate chunk {i+1}")
+    #         continue
+
     #     try:
-    #         vector = get_embedding(c["text"])
+    #         vector = get_embedding(text)
 
     #         doc = {
     #             "file_name": TARGET_FILE,
     #             "page": c["page"],
     #             "chunk_id": c["chunk_id"],
-    #             "text": c["text"],
+    #             "text": text,
     #             "embedding": vector
     #         }
 
     #         insert_documents([doc])
 
+    #         seen.add(text)
+
     #         success += 1
     #         print(f"Inserted {i+1}/{len(chunks)}")
 
-    #         time.sleep(20)
-
     #     except Exception as e:
     #         print(f"Error at chunk {i+1}: {e}")
+
+    #     time.sleep(20)
 
     # print("\nDone!")
     # print("Total inserted:", success)
@@ -75,6 +91,10 @@ def main():
 
     success = 0
 
+    seen = set()
+    # Problem
+    # deduplicate ทำเฉพาะใน Ram
+
     for pdf_file in pdf_files:
         pdf_path = os.path.join(PDF_PATH, pdf_file)
 
@@ -86,18 +106,29 @@ def main():
         print("Total chunks: ", len(chunks))
 
         for i, c in enumerate(chunks):
+            text = c["text"].strip()
+
+            if not text:
+                continue
+
+            if text in seen:
+                print(f"Skip duplicate chunk {i+1}")
+                continue
+
             try:
-                vector = get_embedding(c["text"])
+                vector = get_embedding(text)
 
                 doc = {
                     "file_name": pdf_file,
                     "page": c["page"],
                     "chunk_id": c["chunk_id"],
-                    "text": c["text"],
+                    "text": text,
                     "embedding": vector
                 }
 
                 insert_documents([doc])
+
+                seen.add(text)
 
                 success += 1
                 print(f"Inserted {i+1}/{len(chunks)}")

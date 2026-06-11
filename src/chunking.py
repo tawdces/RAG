@@ -1,38 +1,43 @@
 from config import CHUNK_SIZE, CHUNK_OVERLAP
 
-def chunk_text(text: str, chunk_size = CHUNK_SIZE, overlap = CHUNK_OVERLAP):
+def chunk_text(text: str):
+    lines = text.split("\n")
+
     chunks = []
+    current = ""
 
-    start = 0
-    chunk_id = 0
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
 
-    while start < len(text):
-        end = start + chunk_size
-        chunk = text[start:end]
+        candidate = current + "\n" + line if current else line
 
-        chunks.append({
-            "chunk_id": chunk_id,
-            "text": chunk
-        })
+        if len(candidate) > CHUNK_SIZE:
+            if current:
+                chunks.append(current.strip())
+            current = line
+        else:
+            current = candidate
 
-        chunk_id += 1
-        start = end - overlap
+    if current:
+        chunks.append(current.strip())
 
     return chunks
 
 def create_chunks(pages):
     all_chunks = []
+    chunk_id = 0
 
     for page in pages:
-        page_text = page["text"]
+        page_chunks = chunk_text(page["text"])
 
-        page_chunks = chunk_text(page_text)
-
-        for c in page_chunks:
+        for text in page_chunks:
             all_chunks.append({
                 "page": page["page"],
-                "chunk_id": c["chunk_id"],
-                "text": c["text"]
+                "chunk_id": chunk_id,
+                "text": text
             })
+            chunk_id += 1
 
     return all_chunks
