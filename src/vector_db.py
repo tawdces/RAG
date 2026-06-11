@@ -29,9 +29,24 @@ def search_similar(vector, top_k=3):
                 "file_name": 1,
                 "text": 1,
                 "page": 1,
+                "chunk_id": 1,
                 "score": {"$meta": "vectorSearchScore"}
             }
         }
     ]
 
     return list(collection.aggregate(pipeline))
+
+def get_chunk_context(file_name, chunk_id):
+    return list(collection.find({
+        "file_name": file_name,
+        "chunk_id": {
+            "$in": [chunk_id - 1, chunk_id, chunk_id + 1]
+        }
+    }, {
+        "_id": 0,
+        "file_name": 1,
+        "page": 1,
+        "chunk_id": 1,
+        "text": 1
+    }).sort("chunk_id", 1))
