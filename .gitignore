@@ -1,8 +1,9 @@
 *.pdf
 *.PDF
-
 .env
 
+architecture/
 __pycache__/
 
 PROBLEM.txt
+LOG.txt

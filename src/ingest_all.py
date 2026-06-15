@@ -5,10 +5,6 @@ from text_chunker import create_chunks
 from embedding_service import get_embedding
 from vector_db import insert_documents
 from config import PDF_PATH
-import hashlib
-
-def hash_text(t):
-    return hashlib.md5(t.encode()).hexdigest()
 
 def main():
 
@@ -40,8 +36,9 @@ def main():
             if not text:
                 continue
 
-            if text in seen:
-                print(f"Skip duplicate chunk {i+1}")
+            key = (pdf_file, c["page"], c["chunk_id"])
+
+            if key in seen:
                 continue
 
             try:
@@ -57,7 +54,7 @@ def main():
 
                 insert_documents([doc])
 
-                seen.add(text)
+                seen.add(key)
 
                 success += 1
                 print(f"Inserted {i+1}/{len(chunks)}")

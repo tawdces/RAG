@@ -1,48 +1,40 @@
 from embedding_service import get_embedding
 from vector_db import search_similar, get_chunk_context
-import hashlib
 
-def hash_text(t):
-    return hashlib.md5(t.encode()).hexdigest()
+def select_top_chunks(results, threshold):
 
-def is_low_confidence(results):
-    if len(results) < 2:
-        return False
+    if not results:
+        return []
 
-    return (results[0]["score"] - results[1]["score"]) < 0.05
-
-def select_top_chunks(results):
+    best_score = results[0]["score"]
     selected = []
 
-    selected.append(results[0])
-
-    if is_low_confidence(results):
-        selected.append(results[1])
+    for r in results:
+        if r["score"] >= best_score - threshold:
+            selected.append(r)
 
     return selected
 
-def build_llm_context(expanded_chunks):
+def deduplicate_chunks(chunks):
+    unique = {}
 
-    expanded_chunks = sorted(
-        expanded_chunks,
-        key=lambda x: (x["page"], x["chunk_id"])
-    )
+    for c in chunks:
+        key = (c["file_name"], c["chunk_id"])
+        if key not in unique:
+            unique[key] = c
+
+    return list(unique.values())
+
+
+def build_llm_context(chunks):
+    chunks = sorted(chunks, key=lambda x: (x["page"], x["chunk_id"]))
 
     context = ""
     current_page = None
 
-    seen_hashes = set()
-
-    for c in expanded_chunks:
-
+    for c in chunks:
         text = c["text"].strip()
-        text_hash = hash_text(text)
 
-        if text_hash in seen_hashes:
-            continue
-
-        seen_hashes.add(text_hash)
-        
         if current_page != c["page"]:
             current_page = c["page"]
             context += f"\n[Page {current_page}]\n\n"
@@ -52,7 +44,9 @@ def build_llm_context(expanded_chunks):
     return context
 
 def main():
+
     while True:
+
         question = input("\nQuestion: ")
 
         if question.lower() == "exit":
@@ -73,7 +67,7 @@ def main():
             print(f"Score : {r['score']:.4f}")
             print(r["text"])
 
-        selected_chunks = select_top_chunks(results)
+        selected_chunks = select_top_chunks(results, 0.05)
 
         print("\n==============================")
         print("🔥 SELECTED CHUNKS")
@@ -82,7 +76,7 @@ def main():
         for s in selected_chunks:
             print(f"- chunk {s['chunk_id']} | score={s['score']:.4f}")
 
-        expanded_contexts = []
+        all_expanded = []
 
         for r in selected_chunks:
 
@@ -91,39 +85,18 @@ def main():
                 r["chunk_id"]
             )
 
-            expanded_contexts.append({
-                "original": r,
-                "expanded": expanded
-            })
+            all_expanded.extend(expanded)
+
+        expanded_chunks = deduplicate_chunks(all_expanded)
+
+        llm_context = build_llm_context(expanded_chunks)
 
         print("\n==============================")
         print("📌 FINAL LLM CONTEXT")
         print("==============================\n")
 
-        llm_blocks = []
+        print(llm_context)
 
-        for i, item in enumerate(expanded_contexts):
-
-            llm_context = build_llm_context(item["expanded"])
-
-            block = {
-                "block_id": i + 1,
-                "file": item["original"]["file_name"],
-                "chunk_id": item["original"]["chunk_id"],
-                "score": item["original"]["score"],
-                "context": llm_context
-            }
-
-            llm_blocks.append(block)
-
-            print(f"\n\n######## BLOCK {block['block_id']} ########")
-            print(f"File: {block['file']}")
-            print(f"Chunk ID: {block['chunk_id']}")
-            print(f"Score: {block['score']:.4f}")
-
-            print("\n--- CONTEXT (FOR LLM) ---")
-            print(block["context"])
-            print("-" * 60)
 
 if __name__ == "__main__":
     main()
