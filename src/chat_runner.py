@@ -1,101 +1,111 @@
 from embedding_service import get_embedding
-from vector_db import search_similar, get_chunk_context
-
-def select_top_chunks(results, threshold):
-
-    if not results:
-        return []
-
-    best_score = results[0]["score"]
-    selected = []
-
-    for r in results:
-        if r["score"] >= best_score - threshold:
-            selected.append(r)
-
-    return selected
+from vector_db import search_similar, rerank_chunks, get_chunk_context
 
 def deduplicate_chunks(chunks):
-    unique = {}
+    unique_chunks = {}
 
-    for c in chunks:
-        key = (c["file_name"], c["chunk_id"])
-        if key not in unique:
-            unique[key] = c
+    for chunk in chunks:
+        key = (chunk["file_name"], chunk["page"], chunk["chunk_id"])
 
-    return list(unique.values())
+        if key not in unique_chunks:
+            unique_chunks[key] = chunk
 
+    return list(unique_chunks.values())
 
 def build_llm_context(chunks):
-    chunks = sorted(chunks, key=lambda x: (x["page"], x["chunk_id"]))
+    chunks = sorted(chunks, key=lambda item: (item["page"], item["chunk_id"]))
 
-    context = ""
+    lines = []
     current_page = None
 
-    for c in chunks:
-        text = c["text"].strip()
+    for chunk in chunks:
+        text = chunk["text"].strip()
 
-        if current_page != c["page"]:
-            current_page = c["page"]
-            context += f"\n[Page {current_page}]\n\n"
+        if not text:
+            continue
 
-        context += text + "\n\n"
+        if current_page != chunk["page"]:
+            current_page = chunk["page"]
+            lines.extend([f"[Page {current_page}]", ""])
 
-    return context
+        lines.extend([text, ""])
+
+    return "\n".join(lines).strip()
+
+def run_pipeline(question):
+
+    print("\n==============================")
+    print("QUESTION:", question)
+    print("==============================\n")
+
+    q_vector = get_embedding(question)
+
+    results = search_similar(q_vector, top_k=10)
+
+    print("\n📌 VECTOR RESULTS")
+
+    for r in results:
+
+        preview = r["text"][:80].replace("\n", " ")
+
+        print(
+            f'{r["file_name"]} | '
+            f'chunk {r["chunk_id"]} | '
+            f'page {r["page"]} | '
+            f'score={r["score"]:.4f}\n'
+            f'  {preview}...\n'
+        )
+
+    reranked = rerank_chunks(question, results)
+    selected = reranked[:5]
+
+    print("\n🔥 RERANKED TOP")
+
+    for s in selected:
+
+        print(
+            f'{s["file_name"]} | '
+            f'chunk {s["chunk_id"]} | '
+            f'page {s["page"]} | '
+            f'rerank={s["rerank_score"]:.4f}'
+        )
+
+    expanded = []
+
+    if selected:
+        best_score = selected[0]["rerank_score"]
+
+        for chunk in selected:
+
+            threshold = 0.05
+
+            score_gap = best_score - chunk["rerank_score"]
+
+            if score_gap > threshold:
+                continue
+
+            expanded.extend(get_chunk_context(chunk["file_name"], chunk["chunk_id"]))
+
+    expanded = deduplicate_chunks(expanded)
+
+    print("\n🧹 After dedup:", len(expanded))
+
+    return build_llm_context(expanded)
 
 def main():
 
     while True:
+        q = input("\nQuestion: ")
 
-        question = input("\nQuestion: ")
-
-        if question.lower() == "exit":
+        if q.lower() == "exit":
             break
 
-        q_vector = get_embedding(question)
-
-        results = search_similar(q_vector, top_k=3)
-
-        print("\n==============================")
-        print("📌 VECTOR SEARCH RESULTS")
-        print("==============================\n")
-
-        for i, r in enumerate(results):
-            print(f"\n--- TOP {i+1} ---")
-            print(f"File : {r['file_name']}")
-            print(f"Chunk ID : {r['chunk_id']}")
-            print(f"Score : {r['score']:.4f}")
-            print(r["text"])
-
-        selected_chunks = select_top_chunks(results, 0.05)
-
-        print("\n==============================")
-        print("🔥 SELECTED CHUNKS")
-        print("==============================")
-
-        for s in selected_chunks:
-            print(f"- chunk {s['chunk_id']} | score={s['score']:.4f}")
-
-        all_expanded = []
-
-        for r in selected_chunks:
-
-            expanded = get_chunk_context(
-                r["file_name"],
-                r["chunk_id"]
-            )
-
-            all_expanded.extend(expanded)
-
-        expanded_chunks = deduplicate_chunks(all_expanded)
-
-        llm_context = build_llm_context(expanded_chunks)
+        context = run_pipeline(q)
 
         print("\n==============================")
         print("📌 FINAL LLM CONTEXT")
         print("==============================\n")
-
-        print(llm_context)
+        print(context)
 
 
 if __name__ == "__main__":

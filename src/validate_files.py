@@ -1,7 +1,7 @@
 import os
+from config import PDF_PATH
 from pdf_loader import load_pdf
 from text_chunker import create_chunks
-from config import PDF_PATH
 
 def main():
     pdf_files = [

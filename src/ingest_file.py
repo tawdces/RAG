@@ -1,10 +1,10 @@
 import os
-import time
+from config import PDF_PATH
 from pdf_loader import load_pdf
 from text_chunker import create_chunks
 from embedding_service import get_embedding
 from vector_db import insert_documents
-from config import PDF_PATH
+import time
 
 def main():
     TARGET_FILE = "....PDF"
@@ -23,6 +23,7 @@ def main():
 
     for i, c in enumerate(chunks):
         text = c["text"].strip()
+
         if not text:
             continue
 

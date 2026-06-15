@@ -8,14 +8,17 @@ def chunk_text(text: str):
 
     for line in lines:
         line = line.strip()
+
         if not line:
             continue
 
         candidate = current + "\n" + line if current else line
 
         if len(candidate) > CHUNK_SIZE:
+
             if current:
                 chunks.append(current.strip())
+
             current = line
         else:
             current = candidate

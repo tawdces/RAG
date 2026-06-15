@@ -1,13 +1,12 @@
 import os
-import time
+from config import PDF_PATH
 from pdf_loader import load_pdf
 from text_chunker import create_chunks
 from embedding_service import get_embedding
 from vector_db import insert_documents
-from config import PDF_PATH
+import time
 
 def main():
-
     pdf_files = [
         f for f in os.listdir(PDF_PATH)
         if f.endswith(".PDF")
@@ -18,7 +17,6 @@ def main():
     success = 0
 
     seen = set()
-    # Deduplicate ทำเฉพาะใน Ram
 
     for pdf_file in pdf_files:
         pdf_path = os.path.join(PDF_PATH, pdf_file)
@@ -63,7 +61,6 @@ def main():
                 print(f"Error at chunk {i+1}: {e}")
 
             time.sleep(20)
-            # limit 3 request per minute (free tier)
 
     print("\nDone!")
     print("Total inserted:", success)
