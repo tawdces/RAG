@@ -1,11 +1,16 @@
 # RAG Chatbot
 
-Overview
+## Overview
 
-A small Retrieval-Augmented Generation (RAG) demo in Python. The project
-ingests PDFs, turns text into vector embeddings, and stores them in MongoDB.
-Current stage: ingestion + embedding + vector storage and retrieval (no LLM
-integration yet).
+A Retrieval-Augmented Generation (RAG) application in Python that enables semantic search over PDF documents. The system ingests PDFs, converts text into vector embeddings, stores them in MongoDB, and provides multi-stage retrieval with reranking and context expansion.
+
+**Current capabilities:**
+- PDF ingestion and text extraction
+- Semantic chunking with configurable chunk size
+- Vector embeddings via Voyage AI
+- MongoDB vector search with semantic similarity
+- Reranking of search results
+- Interactive query interface
 
 Tech stack
 
@@ -24,71 +29,159 @@ Architecture (high level)
 - Embedding: calls the Voyage embedding model (`voyage-3-large`) to produce vectors ([src/embedding_service.py](src/embedding_service.py)).
 - Storage: writes vectors and metadata to MongoDB and enables vector search ([src/vector_db.py](src/vector_db.py)).
 - Ingest scripts: `ingest_file.py` / `ingest_all.py` run the ingestion pipeline.
-- Retrieval / test runner: `chat_runner.py` demonstrates querying and returning raw retrieved context.
+- Retrieval / test runner: `chat_runner.py` demonstrates querying, reranking, and returning retrieved context.
+- Utility scripts: `reset_collection.py` clears the MongoDB collection; `validate_files.py` checks PDF integrity.
 
-Project structure
+## Environment configuration
+
+Create a `.env` file in the project root with the following variables:
+
+```text
+# MongoDB
+MONGO_URI=your_mongodb_atlas_uri
+MONGO_DB=your_database_name
+MONGO_COLLECTION=your_collection_name
+
+# Embeddings
+MONGODB_MODEL_API_KEY=your_mongodb_model_api_key
+EMBEDDING_MODEL=voyage-3-large
+RERANKING_MODEL=your_reranking_model_name
+
+# Files
+PDF_FOLDER=data/pdf
+CHUNK_SIZE=512
+```
+
+**Required variables:**
+- `MONGO_URI`: MongoDB Atlas connection string
+- `MONGO_DB`: Database name
+- `MONGO_COLLECTION`: Collection name for storing vectors
+- `MONGODB_MODEL_API_KEY`: API key for Voyage AI embeddings
+- `PDF_FOLDER`: Relative path to PDF directory
+
+## Scripts overview
+
+| Script | Purpose |
+|--------|---------|
+| `ingest_file.py` | Ingest a single PDF file into the vector database |
+| `ingest_all.py` | Ingest all PDFs from the configured folder |
+| `chat_runner.py` | Interactive query interface with vector search, reranking, and context expansion |
+| `reset_collection.py` | Clear all documents from the MongoDB collection |
+| `validate_files.py` | Validate PDF files in the data folder |
+| `config.py` | Configuration loader (reads from `.env`) |
+| `pdf_loader.py` | PDF text extraction utility |
+| `text_chunker.py` | Text splitting into chunks |
+| `embedding_service.py` | Embedding generation via Voyage AI |
+| `vector_db.py` | MongoDB vector search and reranking operations |
+
+## Project structure
 
 ```
 README.md
 REQUIREMENTS.txt
 src/
-  pdf_loader.py
-  text_chunker.py
-  embedding_service.py
-  vector_db.py
-  ingest_file.py
-  ingest_all.py
-  chat_runner.py
-  config.py
-  reset_collection.py
-  validate_files.py
+  pdf_loader.py          # Extract text from PDFs
+  text_chunker.py        # Split text into chunks
+  embedding_service.py   # Generate embeddings
+  vector_db.py           # MongoDB operations and reranking
+  ingest_file.py         # Single file ingestion
+  ingest_all.py          # Batch ingestion
+  chat_runner.py         # Interactive retrieval demo
+  config.py              # Environment configuration
+  reset_collection.py    # Clear MongoDB collection
+  validate_files.py      # Validate PDF files
 data/
-  pdf/
+  pdf/                   # PDF storage location
 ```
 
-Current limitation
+## Retrieval pipeline
 
-- The pipeline for ingestion, embedding, and retrieval is implemented.
-- The system does NOT yet call an LLM to generate final answers. Retrieved
-  results are returned as raw context (no response-generation step).
+The `chat_runner.py` script implements a multi-stage retrieval pipeline:
 
-Setup (basic)
+1. **Query embedding**: Convert user question to vector using Voyage AI
+2. **Vector search**: Find top 10 similar chunks from MongoDB using vector similarity
+3. **Reranking**: Use a reranking model to prioritize most relevant results
+4. **Context expansion**: Retrieve surrounding chunks for better context
+5. **Deduplication**: Remove duplicate chunks
+6. **Context building**: Format results as structured context for LLM integration
 
-1. Install dependencies:
+## Current status
+
+- ✅ PDF ingestion, chunking, and embedding
+- ✅ Vector storage in MongoDB with semantic search
+- ✅ Reranking and context expansion
+- ❌ LLM integration for response generation (future work)
+- ❌ API layer for serving queries (future work)
+
+## Setup
+
+### 1. Install dependencies
 
 ```bash
 pip install -r REQUIREMENTS.txt
 ```
 
-2. Create a `.env` file with at least:
+Required packages:
+- `pymongo` — MongoDB client
+- `pypdf` — PDF reading
+- `openai` — LLM integration (future use)
+- `python-dotenv` — Environment variable management
+- Additional: `voyageai` — Voyage AI embeddings (check if in REQUIREMENTS.txt)
 
-```text
-MONGO_URI=your_mongodb_atlas_uri
-MONGO_DB=your_db_name
-MONGO_COLLECTION=your_collection
-MONGODB_MODEL_API_KEY=your_mongodb_model_api_key
-EMBEDDING_MODEL=voyage-3-large
-PDF_PATH=data/pdf
-```
+### 2. Configure environment
 
-3. Ingest documents (example):
+Create a `.env` file in the project root with required variables (see Environment configuration section above).
+
+### 3. Ingest documents
+
+Ingest all PDFs from the configured folder:
 
 ```bash
 python src/ingest_all.py
 ```
 
-4. Run a retrieval demo:
+Or ingest a single file (edit `TARGET_FILE` in the script):
+
+```bash
+python src/ingest_file.py
+```
+
+### 4. Run retrieval demo
+
+Start an interactive query session:
 
 ```bash
 python src/chat_runner.py
 ```
 
-Future work
+Type your questions and press Enter. Type `exit` to quit.
 
-- Add LLM integration to generate final answers from retrieved context (RAG
-  completion stage).
-- Improve retrieval ranking and filtering.
-- Add an API layer (e.g., FastAPI) for serving queries.
+### Utility commands
+
+Reset the MongoDB collection:
+
+```bash
+python src/reset_collection.py
+```
+
+Validate PDF files:
+
+```bash
+python src/validate_files.py
+```
+
+## Future work
+
+**Immediate next steps:**
+- LLM integration to generate final answers from retrieved context (RAG completion stage)
+- Add API layer (e.g., FastAPI) for serving queries over HTTP
+
+**Potential improvements:**
+- Improve retrieval ranking and filtering
+- Hybrid search combining dense and sparse retrieval
+- Query expansion and multi-turn conversations
+- Caching for frequently asked questions
+- Evaluation metrics for retrieval quality
 
 License
 
